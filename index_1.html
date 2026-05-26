@@ -1,0 +1,886 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-title" content="Planificador"/>
+<meta name="theme-color" content="#111"/>
+<title>Planificador Personal</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css"/>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --bg:#fff;--bg2:#f5f4f1;--bg3:#eeede9;
+  --text:#1a1a1a;--text2:#666;--text3:#aaa;
+  --border:rgba(0,0,0,.10);--border2:rgba(0,0,0,.18);
+  --green:#1D9E75;--blue:#378ADD;--pink:#D4537E;
+  --orange:#D85A30;--amber:#BA7517;--purple:#7F77DD;
+  --bb:#b91c1c;--bb2:#dc2626;--bb-gold:#d97706;--bb-bg:#1a0a0a;
+  --r-md:8px;--r-lg:12px;--r-xl:16px;
+  --font:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;
+}
+@media(prefers-color-scheme:dark){:root{
+  --bg:#1c1c1e;--bg2:#2c2c2e;--bg3:#3a3a3c;
+  --text:#f0f0f0;--text2:#aaa;--text3:#666;
+  --border:rgba(255,255,255,.10);--border2:rgba(255,255,255,.20);
+}}
+body{font-family:var(--font);background:var(--bg3);color:var(--text);min-height:100vh;-webkit-font-smoothing:antialiased;}
+#root{max-width:680px;margin:0 auto;padding:0 0 80px;}
+/* HEADER */
+.app-header{background:var(--bg);border-bottom:.5px solid var(--border);position:sticky;top:0;z-index:50;padding:12px 16px 0;}
+.header-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;}
+.app-title{font-size:17px;font-weight:700;color:var(--text);}
+.sync-pill{display:inline-flex;align-items:center;gap:5px;font-size:11px;padding:4px 10px;border-radius:20px;font-weight:500;}
+.sync-pill.ok{background:rgba(29,158,117,.12);color:var(--green);}
+.sync-pill.off{background:var(--bg2);color:var(--text3);}
+.sync-pill.loading{background:rgba(55,138,221,.12);color:var(--blue);}
+.sync-pill.error{background:rgba(212,83,126,.12);color:var(--pink);}
+.tabs{display:flex;gap:2px;overflow-x:auto;scrollbar-width:none;}
+.tabs::-webkit-scrollbar{display:none;}
+.tab{flex-shrink:0;padding:8px 13px;font-size:13px;border:none;border-bottom:2.5px solid transparent;background:transparent;color:var(--text2);cursor:pointer;white-space:nowrap;}
+.tab.active{color:var(--green);border-bottom-color:var(--green);font-weight:600;}
+.tab.active.bb-tab{color:var(--bb2);border-bottom-color:var(--bb2);}
+.content{padding:16px;}
+button{font-family:var(--font);cursor:pointer;}
+.btn{display:inline-flex;align-items:center;gap:6px;padding:8px 15px;font-size:13px;border:.5px solid var(--border2);border-radius:var(--r-md);background:transparent;color:var(--text);}
+.btn:hover{background:var(--bg2);}
+.btn-primary{background:var(--green);color:#fff;border-color:var(--green);}
+.btn-primary:hover{background:#178a65;}
+.btn-red{background:var(--bb);color:#fff;border-color:var(--bb);}
+.btn-red:hover{background:#991b1b;}
+.btn-sm{padding:5px 11px;font-size:12px;}
+.icon-btn{background:none;border:none;color:var(--text2);padding:4px 6px;border-radius:var(--r-md);}
+.icon-btn:hover{background:var(--bg2);color:var(--text);}
+/* CALENDAR */
+.cal-nav{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;}
+.cal-nav h2{font-size:17px;font-weight:600;}
+.day-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:3px;}
+.day-header{text-align:center;font-size:11px;font-weight:600;color:var(--text2);padding:4px 0;}
+.day-cell{min-height:56px;padding:5px;border:.5px solid var(--border);border-radius:var(--r-md);cursor:pointer;background:var(--bg);}
+.day-cell:hover{border-color:var(--border2);}
+.day-cell.selected{border:2px solid var(--green);background:rgba(29,158,117,.06);}
+.day-num{width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;margin-bottom:3px;}
+.day-num.today{background:var(--green);color:#fff;font-weight:700;}
+.day-dots{display:flex;flex-wrap:wrap;gap:2px;}
+.dot{width:5px;height:5px;border-radius:50%;}
+/* DAY DETAIL */
+.day-detail{background:var(--bg3);min-height:calc(100vh - 64px);animation:slideIn .2s ease;}
+@keyframes slideIn{from{opacity:0;transform:translateX(14px);}to{opacity:1;transform:none;}}
+.detail-header{background:var(--bg);border-bottom:.5px solid var(--border);padding:12px 16px;position:sticky;top:64px;z-index:40;display:flex;align-items:center;gap:10px;}
+.detail-back{background:none;border:none;display:flex;align-items:center;gap:5px;font-size:14px;color:var(--green);font-family:var(--font);cursor:pointer;padding:4px 0;flex-shrink:0;font-weight:500;}
+.detail-date-big{flex:1;text-align:center;}
+.dw{font-size:11px;color:var(--text2);font-weight:700;text-transform:uppercase;letter-spacing:.08em;}
+.dn{font-size:30px;font-weight:800;line-height:1;color:var(--text);}
+.dn.today-c{color:var(--green);}
+.dm{font-size:13px;color:var(--text2);}
+.detail-body{padding:14px 16px;}
+.section-card{background:var(--bg);border-radius:var(--r-xl);overflow:hidden;margin-bottom:14px;border:.5px solid var(--border);}
+.section-hd{display:flex;align-items:center;justify-content:space-between;padding:11px 16px;border-bottom:.5px solid var(--border);}
+.section-title{font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.07em;}
+.meal-row{display:flex;align-items:center;gap:14px;padding:14px 16px;border-bottom:.5px solid var(--border);cursor:pointer;}
+.meal-row:last-child{border-bottom:none;}
+.meal-row:hover{background:var(--bg2);}
+.meal-icon{width:42px;height:42px;border-radius:var(--r-lg);display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.meal-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px;}
+.meal-val{font-size:15px;color:var(--text);line-height:1.4;}
+.meal-empty{font-size:14px;color:var(--text3);}
+.ev-row{display:flex;align-items:flex-start;gap:12px;padding:14px 16px;border-bottom:.5px solid var(--border);}
+.ev-row:last-child{border-bottom:none;}
+.ev-row:hover{background:var(--bg2);}
+.ev-dot{width:10px;height:10px;border-radius:50%;margin-top:5px;flex-shrink:0;}
+.ev-title{font-size:16px;font-weight:500;}
+.ev-time{font-size:13px;color:var(--text2);margin-top:2px;}
+.ev-note{font-size:13px;color:var(--text2);margin-top:4px;line-height:1.5;}
+.rt-row{display:flex;align-items:center;gap:14px;padding:14px 16px;border-bottom:.5px solid var(--border);}
+.rt-row:last-child{border-bottom:none;}
+.rt-row:hover{background:var(--bg2);}
+.rt-check{width:26px;height:26px;border-radius:50%;border:2.5px solid;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;transition:all .15s;}
+.rt-title{font-size:15px;}
+.rt-title.done{text-decoration:line-through;opacity:.4;}
+.ag-row{display:flex;align-items:flex-start;gap:10px;padding:10px 4px;border-bottom:.5px solid var(--border);}
+.ag-row:last-child{border-bottom:none;}
+.ag-row:hover{background:var(--bg2);border-radius:4px;}
+.ag-bar{width:3px;border-radius:2px;align-self:stretch;min-height:18px;flex-shrink:0;}
+.rt-list-row{display:flex;align-items:center;gap:12px;padding:11px 14px;border:.5px solid var(--border);border-radius:var(--r-lg);margin-bottom:8px;background:var(--bg);}
+.day-pill{font-size:10px;padding:2px 5px;border-radius:4px;font-weight:600;}
+.food-card{border:.5px solid var(--border);border-radius:var(--r-lg);margin-bottom:8px;overflow:hidden;background:var(--bg);}
+.food-card.today{border-color:var(--green);}
+.food-card-hd{padding:8px 14px;background:var(--bg2);border-bottom:.5px solid var(--border);font-size:13px;font-weight:600;}
+.food-card-hd.today-h{background:rgba(29,158,117,.09);color:var(--green);}
+.food-cols{display:grid;grid-template-columns:repeat(4,1fr);}
+.food-col{padding:8px;border-right:.5px solid var(--border);cursor:pointer;min-height:56px;}
+.food-col:last-child{border-right:none;}
+.food-col:hover{background:var(--bg2);}
+.fc-h{display:flex;align-items:center;gap:4px;margin-bottom:4px;}
+.fc-lbl{font-size:10px;font-weight:600;color:var(--text2);}
+.fc-val{font-size:11px;color:var(--text);line-height:1.35;word-break:break-word;}
+
+/* ══════════════════════════════════════════════
+   BLOOD BOWL
+══════════════════════════════════════════════ */
+.bb-header{background:linear-gradient(135deg,#1a0505 0%,#2d0a0a 100%);padding:20px 16px 16px;margin:-16px -16px 16px;position:relative;overflow:hidden;}
+.bb-header::before{content:'';position:absolute;inset:0;background:url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.03'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");}
+.bb-header-title{font-size:22px;font-weight:900;color:#fff;letter-spacing:-.5px;position:relative;}
+.bb-header-sub{font-size:13px;color:rgba(255,255,255,.5);margin-top:2px;position:relative;}
+.bb-subtabs{display:flex;gap:2px;margin-bottom:16px;background:var(--bg2);border-radius:var(--r-lg);padding:3px;}
+.bb-subtab{flex:1;padding:8px;font-size:13px;font-weight:500;border:none;border-radius:var(--r-md);background:transparent;color:var(--text2);cursor:pointer;text-align:center;}
+.bb-subtab.active{background:var(--bb);color:#fff;font-weight:700;}
+/* TOURNAMENT CARD */
+.bb-card{background:var(--bg);border:.5px solid var(--border);border-radius:var(--r-xl);margin-bottom:10px;overflow:hidden;transition:border-color .15s;}
+.bb-card:hover{border-color:var(--border2);}
+.bb-card-top{display:flex;align-items:center;gap:12px;padding:14px 16px;cursor:pointer;}
+.bb-card-top:hover .bb-card-name{color:var(--bb2);}
+.bb-trophy{width:40px;height:40px;border-radius:var(--r-lg);background:linear-gradient(135deg,#1a0505,#3d1010);display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.bb-card-name{font-size:15px;font-weight:700;color:var(--text);margin-bottom:3px;transition:color .15s;}
+.bb-card-meta{font-size:12px;color:var(--text2);display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+.bb-card-body{padding:0 16px 14px;border-top:.5px solid var(--border);}
+.bb-stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;padding:12px 0 6px;}
+.bb-stat{text-align:center;background:var(--bg2);border-radius:var(--r-md);padding:8px 4px;}
+.bb-stat-val{font-size:18px;font-weight:800;line-height:1;}
+.bb-stat-lbl{font-size:10px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.05em;margin-top:2px;}
+.bb-pos-badge{display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:20px;font-size:12px;font-weight:700;}
+.bb-pos-badge.gold{background:rgba(217,119,6,.15);color:#d97706;}
+.bb-pos-badge.silver{background:rgba(107,114,128,.15);color:#6b7280;}
+.bb-pos-badge.bronze{background:rgba(180,83,9,.15);color:#b45309;}
+.bb-pos-badge.other{background:var(--bg2);color:var(--text2);}
+.bb-wdl{display:flex;gap:4px;}
+.bb-w{background:rgba(29,158,117,.15);color:var(--green);font-weight:700;font-size:13px;padding:3px 8px;border-radius:var(--r-md);}
+.bb-d{background:rgba(55,138,221,.15);color:var(--blue);font-weight:700;font-size:13px;padding:3px 8px;border-radius:var(--r-md);}
+.bb-l{background:rgba(212,83,126,.15);color:var(--pink);font-weight:700;font-size:13px;padding:3px 8px;border-radius:var(--r-md);}
+/* YEAR SUMMARY */
+.bb-summary-header{background:linear-gradient(135deg,#1a0505,#2d0a0a);border-radius:var(--r-xl);padding:20px;margin-bottom:14px;color:#fff;}
+.bb-summary-year{font-size:32px;font-weight:900;margin-bottom:2px;}
+.bb-summary-sub{font-size:13px;color:rgba(255,255,255,.5);}
+.bb-big-stats{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:14px;}
+.bb-big-stat{background:var(--bg);border:.5px solid var(--border);border-radius:var(--r-lg);padding:14px;text-align:center;}
+.bb-big-stat-val{font-size:28px;font-weight:900;color:var(--bb2);line-height:1;}
+.bb-big-stat-lbl{font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.06em;margin-top:4px;}
+.bb-wdl-bar{background:var(--bg);border:.5px solid var(--border);border-radius:var(--r-lg);padding:16px;margin-bottom:14px;}
+.bb-bar-row{display:flex;align-items:center;gap:10px;margin-bottom:8px;}
+.bb-bar-row:last-child{margin-bottom:0;}
+.bb-bar-label{width:36px;font-size:11px;font-weight:700;text-align:right;flex-shrink:0;}
+.bb-bar-bg{flex:1;height:10px;background:var(--bg2);border-radius:5px;overflow:hidden;}
+.bb-bar-fill{height:100%;border-radius:5px;transition:width .5s;}
+.bb-bar-count{width:28px;font-size:12px;font-weight:700;flex-shrink:0;text-align:left;}
+.bb-team-list{background:var(--bg);border:.5px solid var(--border);border-radius:var(--r-lg);overflow:hidden;margin-bottom:14px;}
+.bb-team-row{display:flex;align-items:center;gap:10px;padding:11px 14px;border-bottom:.5px solid var(--border);}
+.bb-team-row:last-child{border-bottom:none;}
+.bb-podium{background:var(--bg);border:.5px solid var(--border);border-radius:var(--r-lg);padding:14px;margin-bottom:14px;}
+.bb-podium h3{font-size:12px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px;}
+/* SETTINGS */
+.s-card{background:var(--bg);border:.5px solid var(--border);border-radius:var(--r-xl);padding:18px;margin-bottom:12px;}
+.s-card h3{font-size:15px;font-weight:700;margin-bottom:5px;}
+.s-card p{font-size:13px;color:var(--text2);line-height:1.6;margin-bottom:14px;}
+.step{display:flex;gap:10px;margin-bottom:10px;align-items:flex-start;}
+.step-n{width:22px;height:22px;border-radius:50%;background:var(--green);color:#fff;font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:2px;}
+.step-t{font-size:13px;color:var(--text);line-height:1.6;}
+.step-t a{color:var(--blue);text-decoration:none;font-weight:500;}
+.step-t code{background:var(--bg2);padding:1px 6px;border-radius:4px;font-family:monospace;font-size:12px;}
+.connected-box{background:rgba(29,158,117,.08);border:.5px solid rgba(29,158,117,.3);border-radius:var(--r-lg);padding:14px 16px;display:flex;align-items:center;gap:12px;margin-bottom:14px;}
+/* PROGRESS */
+.prog-bg{height:6px;background:var(--border);border-radius:3px;overflow:hidden;}
+.prog-fill{height:100%;border-radius:3px;background:var(--green);transition:width .4s;}
+/* MODAL */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:flex-end;justify-content:center;z-index:200;}
+@media(min-width:600px){.modal-overlay{align-items:center;}}
+.modal{background:var(--bg);border-radius:var(--r-xl) var(--r-xl) 0 0;padding:22px 20px 38px;width:100%;max-width:480px;max-height:92vh;overflow-y:auto;}
+@media(min-width:600px){.modal{border-radius:var(--r-xl);padding:26px;}}
+.modal h3{font-size:16px;font-weight:700;margin-bottom:16px;}
+.fg{margin-bottom:12px;}
+.fg label{display:block;font-size:12px;font-weight:600;color:var(--text2);margin-bottom:5px;}
+input[type=text],input[type=time],input[type=number],input[type=password],textarea,select{
+  width:100%;padding:10px 12px;font-size:14px;font-family:var(--font);
+  border:.5px solid var(--border2);border-radius:var(--r-md);
+  background:var(--bg2);color:var(--text);outline:none;
+}
+input:focus,textarea:focus,select:focus{border-color:var(--green);box-shadow:0 0 0 3px rgba(29,158,117,.12);}
+textarea{resize:vertical;min-height:80px;}
+.color-row{display:flex;gap:8px;flex-wrap:wrap;}
+.swatch{width:28px;height:28px;border-radius:50%;cursor:pointer;}
+.swatch.sel{box-shadow:0 0 0 3px var(--bg),0 0 0 5.5px currentColor;}
+.day-row{display:flex;gap:5px;flex-wrap:wrap;}
+.dtog{padding:6px 10px;font-size:12px;border-radius:var(--r-md);border:.5px solid var(--border);background:transparent;color:var(--text2);cursor:pointer;}
+.dtog.on{font-weight:600;}
+.modal-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:20px;}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.empty-s{padding:24px;text-align:center;color:var(--text3);font-size:13px;}
+.empty{font-size:13px;color:var(--text2);padding:6px 0;}
+.section-lbl{font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.06em;margin:16px 0 8px;}
+.past{opacity:.45;}
+.toast{position:fixed;bottom:28px;left:50%;transform:translateX(-50%);background:#111;color:#fff;padding:10px 20px;border-radius:var(--r-lg);font-size:13px;z-index:999;opacity:0;transition:opacity .25s;pointer-events:none;white-space:nowrap;font-weight:500;}
+.toast.show{opacity:1;}
+.setup-screen{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;}
+.setup-box{background:var(--bg);border-radius:var(--r-xl);padding:28px 24px;max-width:420px;width:100%;border:.5px solid var(--border);}
+.setup-box h1{font-size:22px;font-weight:800;margin-bottom:6px;}
+.loader{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;color:var(--text2);font-size:14px;}
+.spin{width:32px;height:32px;border:3px solid var(--border);border-top-color:var(--green);border-radius:50%;animation:spin .8s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg);}}
+@media(max-width:400px){
+  .food-cols{grid-template-columns:repeat(2,1fr);}
+  .food-col:nth-child(2){border-right:none;}
+  .food-col:nth-child(3){border-right:.5px solid var(--border);border-top:.5px solid var(--border);}
+  .food-col:nth-child(4){border-top:.5px solid var(--border);}
+  .bb-big-stats{grid-template-columns:repeat(2,1fr);}
+  .form-grid{grid-template-columns:1fr;}
+}
+@supports(padding-bottom:env(safe-area-inset-bottom)){
+  #root{padding-bottom:calc(80px + env(safe-area-inset-bottom));}
+}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<div class="toast" id="toast"></div>
+<script>
+const DAYS   = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
+const MONTHS = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+const COLORS = ['#1D9E75','#378ADD','#D4537E','#D85A30','#BA7517','#7F77DD','#639922'];
+const MEALS  = [
+  {key:'breakfast',label:'Desayuno',icon:'ti-coffee', color:'#BA7517'},
+  {key:'lunch',    label:'Almuerzo',icon:'ti-soup',   color:'#1D9E75'},
+  {key:'snack',    label:'Merienda',icon:'ti-apple',  color:'#D4537E'},
+  {key:'dinner',   label:'Cena',    icon:'ti-moon',   color:'#378ADD'},
+];
+const LS_URL='sb_url', LS_KEY='sb_key', ROW_ID='main', TABLE='planificador';
+
+/* ── UTILS ─────────────────────────────────────────────────────────────── */
+function dk(y,m,d){return `${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;}
+function todayKey(){const n=new Date();return dk(n.getFullYear(),n.getMonth(),n.getDate());}
+function parseDate(s){return new Date(s+'T00:00:00');}
+function fmtLabel(s){const d=parseDate(s);return `${DAYS[d.getDay()]}, ${d.getDate()} de ${MONTHS[d.getMonth()]}`;}
+function fmtDay(d){return `${DAYS[d.getDay()]} ${d.getDate()} de ${MONTHS[d.getMonth()]}`;}
+function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function qs(s){return document.querySelector(s);}
+function bindAll(s,e,fn){document.querySelectorAll(s).forEach(el=>el.addEventListener(e,fn));}
+function bind(s,e,fn){const el=qs(s);if(el)el.addEventListener(e,fn);}
+let toastTid;
+function toast(msg,dur=2500){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');clearTimeout(toastTid);toastTid=setTimeout(()=>t.classList.remove('show'),dur);}
+
+/* ── SUPABASE ──────────────────────────────────────────────────────────── */
+let sbClient=null;
+function initSupabase(url,key){try{supabase=window.supabase.createClient(url,key);return true;}catch(e){return false;}}
+function getCreds(){return{url:localStorage.getItem(LS_URL)||'',key:localStorage.getItem(LS_KEY)||''};}
+function isConfigured(){const{url,key}=getCreds();return !!(url&&key);}
+async function dbLoad(){const{data,error}=await sbClient.from(TABLE).select('*').eq('id',ROW_ID).single();if(error)throw error;return data;}
+async function dbSave(p){const{error}=await sbClient.from(TABLE).upsert({id:ROW_ID,...p,updated_at:new Date().toISOString()});if(error)throw error;}
+
+/* ── STATE ─────────────────────────────────────────────────────────────── */
+const S={
+  appState:'loading', syncStatus:'loading',
+  today:new Date(), yr:0, mo:0, sel:null, view:'cal', modal:null, form:{},
+  bbView:'list', bbYear: new Date().getFullYear(),
+  events:{}, routines:[], completions:{}, meals:{}, bloodbowl:[],
+};
+S.yr=S.today.getFullYear(); S.mo=S.today.getMonth();
+
+let syncTimer=null;
+function setState(p){Object.assign(S,p);render();}
+function setSyncStatus(s){S.syncStatus=s;const el=qs('#sync-pill');if(!el)return;const L={loading:'Guardando...',ok:'Sincronizado ✓',error:'Error sync'};const I={loading:'ti-loader-2',ok:'ti-cloud-check',error:'ti-cloud-exclamation'};el.className=`sync-pill ${s==='loading'?'loading':s==='ok'?'ok':'error'}`;el.innerHTML=`<i class="ti ${I[s]}" style="${s==='loading'?'animation:spin .7s linear infinite;display:inline-block':''}"></i> ${L[s]}`;}
+
+function payload(){return{events:S.events,routines:S.routines,completions:S.completions,meals:S.meals,bloodbowl:S.bloodbowl};}
+function scheduleSync(){clearTimeout(syncTimer);syncTimer=setTimeout(async()=>{setSyncStatus('loading');try{await dbSave(payload());setSyncStatus('ok');}catch(e){setSyncStatus('error');toast('⚠️ Error al guardar');}},1200);}
+function saveEv(v){S.events=v;scheduleSync();toast('✓ Guardado');}
+function saveRt(v){S.routines=v;scheduleSync();toast('✓ Guardado');}
+function saveCo(v){S.completions=v;scheduleSync();}
+function saveMe(v){S.meals=v;scheduleSync();toast('✓ Guardado');}
+function saveBB(v){S.bloodbowl=v;scheduleSync();toast('✓ Guardado');}
+
+function rtForDate(s){const dow=parseDate(s).getDay();return S.routines.filter(r=>r.days.includes(dow));}
+
+/* ── BOOT ──────────────────────────────────────────────────────────────── */
+async function boot(){
+  if(!isConfigured()){setState({appState:'setup'});return;}
+  const{url,key}=getCreds();
+  if(!initSupabase(url,key)){setState({appState:'setup'});return;}
+  setState({appState:'loading'});
+  try{
+    const row=await dbLoad();
+    S.events=row.events||{}; S.routines=row.routines||[];
+    S.completions=row.completions||{}; S.meals=row.meals||{};
+    S.bloodbowl=row.bloodbowl||[];
+    setState({appState:'ready',syncStatus:'ok'});
+  }catch(e){setState({appState:'ready',syncStatus:'error'});toast('⚠️ Error al conectar');}
+}
+
+/* ── RENDER ────────────────────────────────────────────────────────────── */
+function render(){
+  const root=document.getElementById('root');
+  if(S.appState==='loading'){root.innerHTML=`<div class="loader"><div class="spin"></div>Cargando datos...</div>`;return;}
+  if(S.appState==='setup'){root.innerHTML=buildSetup();attachSetup();return;}
+  root.innerHTML=buildApp();
+  attachEvents();
+  setTimeout(()=>{const el=qs('#f-title')||qs('#f-meal-text')||qs('#f-bb-name');if(el)el.focus();},80);
+}
+
+/* ── SETUP SCREEN ──────────────────────────────────────────────────────── */
+function buildSetup(){return`<div class="setup-screen"><div class="setup-box">
+  <div style="font-size:36px;margin-bottom:8px">📅</div>
+  <h1>Planificador Personal</h1>
+  <p style="font-size:14px;color:var(--text2);margin-bottom:24px;line-height:1.6">Conecta tu proyecto de Supabase para guardar y sincronizar tus datos en todos tus dispositivos.</p>
+  <div style="margin-bottom:20px">
+    <div class="step"><div class="step-n">1</div><div class="step-t">Ve a <a href="https://supabase.com" target="_blank">supabase.com</a> → crea un proyecto gratis</div></div>
+    <div class="step"><div class="step-n">2</div><div class="step-t">En el <strong>SQL Editor</strong>, ejecuta el archivo <code>supabase-setup.sql</code></div></div>
+    <div class="step"><div class="step-n">3</div><div class="step-t">Ve a <strong>Project Settings → API</strong> → copia la URL y la anon key</div></div>
+    <div class="step"><div class="step-n">4</div><div class="step-t">Pégalos aquí abajo y pulsa Conectar</div></div>
+  </div>
+  <div class="fg"><label>Supabase Project URL</label><input type="text" id="setup-url" placeholder="https://xxxx.supabase.co" autocomplete="off" spellcheck="false"></div>
+  <div class="fg"><label>Supabase Anon Key</label><input type="password" id="setup-key" placeholder="eyJhbGciOi..." autocomplete="off"></div>
+  <button class="btn btn-primary" id="setup-connect" style="width:100%;justify-content:center;padding:12px;font-size:14px;margin-top:4px">
+    <i class="ti ti-database"></i> Conectar con Supabase
+  </button>
+  <p style="font-size:11px;color:var(--text3);text-align:center;margin-top:14px;line-height:1.6">Tus datos solo se guardan en tu proyecto de Supabase.</p>
+</div></div>`;}
+
+function attachSetup(){
+  bind('#setup-connect','click',async()=>{
+    const url=(qs('#setup-url')?.value||'').trim(), key=(qs('#setup-key')?.value||'').trim();
+    if(!url||!key){toast('Rellena los dos campos');return;}
+    const btn=qs('#setup-connect'); btn.disabled=true; btn.textContent='Conectando...';
+    if(!initSupabase(url,key)){toast('❌ Error al inicializar');btn.disabled=false;return;}
+    try{
+      await dbLoad();
+      localStorage.setItem(LS_URL,url); localStorage.setItem(LS_KEY,key);
+      toast('✅ ¡Conectado!'); boot();
+    }catch(e){
+      toast('❌ Revisa las credenciales y que hayas ejecutado el SQL');
+      btn.disabled=false; btn.innerHTML='<i class="ti ti-database"></i> Conectar con Supabase';
+    }
+  });
+}
+
+/* ── APP SHELL ─────────────────────────────────────────────────────────── */
+function buildApp(){
+  const sp=S.syncStatus;
+  const L={loading:'Guardando...',ok:'Sincronizado ✓',error:'Error sync'};
+  const I={loading:'ti-loader-2',ok:'ti-cloud-check',error:'ti-cloud-exclamation'};
+  const pillClass=sp==='loading'?'loading':sp==='ok'?'ok':'error';
+  const tabs=[['cal','📅 Cal'],['agenda','Agenda'],['routines','Rutinas'],['food','Comidas'],['bb','🏈 Blood Bowl'],['settings','⚙️']];
+  const noPad=S.sel&&S.view==='cal';
+  return`<div class="app-header">
+    <div class="header-row">
+      <div class="app-title">Planificador</div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <span id="sync-pill" class="sync-pill ${pillClass}"><i class="ti ${I[sp]}" style="${sp==='loading'?'animation:spin .7s linear infinite;display:inline-block':''}"></i> ${L[sp]}</span>
+        <button class="icon-btn" id="manual-sync"><i class="ti ti-refresh" style="font-size:16px"></i></button>
+      </div>
+    </div>
+    <div class="tabs">${tabs.map(([v,l])=>`<button class="tab${S.view===v?v==='bb'?' active bb-tab':' active':''}" data-tab="${v}">${l}</button>`).join('')}</div>
+  </div>
+  <div class="content" style="padding:${noPad?'0':'16px'}">
+    ${S.view==='cal'      ?(S.sel?buildDayDetail():buildCal()):''}
+    ${S.view==='agenda'   ?buildAgenda():''}
+    ${S.view==='routines' ?buildRoutines():''}
+    ${S.view==='food'     ?buildFood():''}
+    ${S.view==='bb'       ?buildBB():''}
+    ${S.view==='settings' ?buildSettings():''}
+  </div>
+  ${S.modal?buildModal():''}`;
+}
+
+/* ── CALENDAR ──────────────────────────────────────────────────────────── */
+function buildCal(){
+  const fd=new Date(S.yr,S.mo,1).getDay(), dim=new Date(S.yr,S.mo+1,0).getDate(), tk=todayKey();
+  let cells='';
+  for(let i=0;i<fd;i++)cells+='<div></div>';
+  for(let d=1;d<=dim;d++){
+    const k=dk(S.yr,S.mo,d),isT=k===tk;
+    const de=S.events[k]||[],rt=rtForDate(k),co=S.completions[k]||[];
+    const hm=MEALS.some(m=>(S.meals[k]||{})[m.key]);
+    let dots='';
+    de.slice(0,3).forEach(ev=>{dots+=`<div class="dot" style="background:${ev.color}"></div>`;});
+    if(rt.length>0){const done=co.filter(id=>rt.some(r=>r.id===id)).length===rt.length;dots+=`<div class="dot" style="background:${done?'#378ADD':'var(--border2)'}"></div>`;}
+    if(hm)dots+=`<div class="dot" style="background:#BA7517"></div>`;
+    cells+=`<div class="day-cell" data-day="${k}"><div class="day-num${isT?' today':''}">${d}</div><div class="day-dots">${dots}</div></div>`;
+  }
+  return`<div class="cal-nav">
+    <button class="btn btn-sm" id="prev-mo"><i class="ti ti-chevron-left"></i></button>
+    <h2>${MONTHS[S.mo]} ${S.yr}</h2>
+    <button class="btn btn-sm" id="next-mo"><i class="ti ti-chevron-right"></i></button>
+  </div>
+  <div class="day-grid" style="margin-bottom:4px">${DAYS.map(d=>`<div class="day-header">${d}</div>`).join('')}</div>
+  <div class="day-grid">${cells}</div>
+  <p style="font-size:12px;color:var(--text3);text-align:center;margin-top:14px">Toca un día para ver el detalle</p>`;
+}
+
+/* ── DAY DETAIL ────────────────────────────────────────────────────────── */
+function buildDayDetail(){
+  const s=S.sel,d=parseDate(s),tk=todayKey(),isT=s===tk;
+  const de=S.events[s]||[],rt=rtForDate(s),co=S.completions[s]||[],dm=S.meals[s]||{};
+  const pv=new Date(d);pv.setDate(d.getDate()-1);const nx=new Date(d);nx.setDate(d.getDate()+1);
+  const pk=dk(pv.getFullYear(),pv.getMonth(),pv.getDate());
+  const nk=dk(nx.getFullYear(),nx.getMonth(),nx.getDate());
+  const mealRows=MEALS.map(m=>{const v=dm[m.key]||'';return`<div class="meal-row" data-meal-day="${s}" data-meal-key="${m.key}" data-meal-val="${encodeURIComponent(v)}">
+    <div class="meal-icon" style="background:${m.color}18"><i class="ti ${m.icon}" style="font-size:22px;color:${m.color}"></i></div>
+    <div style="flex:1"><div class="meal-label" style="color:${m.color}">${m.label}</div>${v?`<div class="meal-val">${esc(v)}</div>`:`<div class="meal-empty">Toca para añadir...</div>`}</div>
+    ${v?`<button class="icon-btn" data-del-meal="${s}" data-del-meal-key="${m.key}"><i class="ti ti-x" style="font-size:14px"></i></button>`:`<i class="ti ti-plus" style="font-size:16px;color:var(--text3)"></i>`}
+  </div>`;}).join('');
+  const evRows=de.length===0?`<div class="empty-s">Sin eventos para este día</div>`:de.map(ev=>`<div class="ev-row">
+    <div class="ev-dot" style="background:${ev.color}"></div>
+    <div style="flex:1"><div class="ev-title">${esc(ev.title)}</div>${ev.time?`<div class="ev-time"><i class="ti ti-clock" style="font-size:12px;vertical-align:-1px"></i> ${ev.time}</div>`:''} ${ev.note?`<div class="ev-note">${esc(ev.note)}</div>`:''}</div>
+    <div style="display:flex;gap:2px;flex-shrink:0">
+      <button class="icon-btn" data-edit-ev="${ev.id}"><i class="ti ti-edit" style="font-size:15px"></i></button>
+      <button class="icon-btn" data-del-ev="${ev.id}"><i class="ti ti-trash" style="font-size:15px"></i></button>
+    </div>
+  </div>`).join('');
+  const compIds=co.filter(id=>rt.some(r=>r.id===id));
+  const pct=rt.length>0?Math.round(compIds.length/rt.length*100):0;
+  const rtRows=rt.length===0?`<div class="empty-s">Sin rutinas para este día</div>`:rt.map(r=>{const done=co.includes(r.id);return`<div class="rt-row">
+    <div class="rt-check" data-comp-rt="${r.id}" style="border-color:${r.color};background:${done?r.color:'transparent'}">${done?`<i class="ti ti-check" style="font-size:13px;color:#fff"></i>`:''}</div>
+    <span class="rt-title${done?' done':''}">${esc(r.title)}</span>
+  </div>`;}).join('');
+  const prog=rt.length>0?`<div style="padding:10px 16px;background:var(--bg2);border-top:.5px solid var(--border);display:flex;align-items:center;gap:10px"><div class="prog-bg" style="flex:1;margin:0"><div class="prog-fill" style="width:${pct}%"></div></div><span style="font-size:12px;font-weight:700;color:${pct===100?'var(--green)':'var(--text2)'};flex-shrink:0">${compIds.length}/${rt.length}</span></div>`:'';
+  return`<div class="day-detail">
+    <div class="detail-header">
+      <button class="detail-back" id="detail-back"><i class="ti ti-chevron-left" style="font-size:18px"></i> Mes</button>
+      <div class="detail-date-big"><div class="dw">${DAYS[d.getDay()]}</div><div class="dn${isT?' today-c':''}">${d.getDate()}</div><div class="dm">${MONTHS[d.getMonth()]} ${d.getFullYear()}</div></div>
+      <div style="display:flex;gap:4px"><button class="icon-btn" data-goto="${pk}"><i class="ti ti-chevron-left"></i></button><button class="icon-btn" data-goto="${nk}"><i class="ti ti-chevron-right"></i></button></div>
+    </div>
+    <div class="detail-body">
+      <div class="section-card"><div class="section-hd"><span class="section-title"><i class="ti ti-tools-kitchen-2" style="font-size:12px;vertical-align:-1px"></i> Menú del día</span></div>${mealRows}</div>
+      <div class="section-card"><div class="section-hd"><span class="section-title"><i class="ti ti-calendar-event" style="font-size:12px;vertical-align:-1px"></i> Eventos</span><button class="btn btn-sm" id="add-ev-btn"><i class="ti ti-plus"></i> Añadir</button></div>${evRows}</div>
+      <div class="section-card"><div class="section-hd"><span class="section-title"><i class="ti ti-repeat" style="font-size:12px;vertical-align:-1px"></i> Rutinas</span></div>${rtRows}${prog}</div>
+    </div>
+  </div>`;
+}
+
+/* ── AGENDA ────────────────────────────────────────────────────────────── */
+function buildAgenda(){
+  const tk=todayKey(),all=[];
+  Object.entries(S.events).forEach(([d,evs])=>evs.forEach(ev=>all.push({...ev,date:d})));
+  all.sort((a,b)=>a.date.localeCompare(b.date)||(a.time||'').localeCompare(b.time||''));
+  const up=all.filter(e=>e.date>=tk),ps=all.filter(e=>e.date<tk).reverse();
+  const upH=up.length===0?'<p class="empty">Sin eventos próximos.</p>':up.map(ev=>{
+    const d=parseDate(ev.date);
+    return`<div class="ag-row"><div style="text-align:center;min-width:38px;flex-shrink:0"><div style="font-size:10px;color:var(--text2);text-transform:uppercase;font-weight:600">${DAYS[d.getDay()]}</div><div style="font-size:22px;font-weight:700;line-height:1.1;color:${ev.date===tk?'var(--green)':'var(--text)'}">${d.getDate()}</div><div style="font-size:10px;color:var(--text2)">${MONTHS[d.getMonth()].slice(0,3)}</div></div>
+    <div class="ag-bar" style="background:${ev.color}"></div>
+    <div style="flex:1"><div style="font-size:14px;font-weight:500">${esc(ev.title)}</div>${ev.time?`<div style="font-size:12px;color:var(--text2)">${ev.time}</div>`:''} ${ev.note?`<div style="font-size:12px;color:var(--text2);margin-top:2px">${esc(ev.note)}</div>`:''}</div>
+    <div style="display:flex;gap:2px;flex-shrink:0"><button class="icon-btn" data-edit-ev="${ev.id}" data-ev-date="${ev.date}"><i class="ti ti-edit" style="font-size:15px"></i></button><button class="icon-btn" data-del-ev="${ev.id}" data-ev-date="${ev.date}"><i class="ti ti-trash" style="font-size:15px"></i></button></div>
+    </div>`;
+  }).join('');
+  const psH=ps.length===0?'':
+    `<div class="section-lbl" style="margin-top:20px">Pasados</div>`+
+    ps.slice(0,10).map(ev=>{const d=parseDate(ev.date);return`<div class="ag-row past" style="align-items:center"><div style="text-align:center;min-width:38px;flex-shrink:0"><div style="font-size:18px;font-weight:600;color:var(--text2)">${d.getDate()}</div><div style="font-size:10px;color:var(--text2)">${MONTHS[d.getMonth()].slice(0,3)}</div></div><div class="ag-bar" style="background:${ev.color}"></div><span style="font-size:13px">${esc(ev.title)}</span>${ev.time?`<span style="font-size:12px;color:var(--text2);margin-left:8px">${ev.time}</span>`:''}</div>`;}).join('');
+  return`<h2 style="font-size:17px;font-weight:700;margin-bottom:14px">Próximos eventos</h2>${upH}${psH}`;
+}
+
+/* ── ROUTINES ──────────────────────────────────────────────────────────── */
+function buildRoutines(){
+  const tk=todayKey();
+  const rows=S.routines.length===0?'<p class="empty">Sin rutinas aún.</p>':S.routines.map(rt=>{
+    const pills=DAYS.map((d,i)=>`<span class="day-pill" style="background:${rt.days.includes(i)?rt.color+'33':'var(--bg2)'};color:${rt.days.includes(i)?rt.color:'var(--text2)'}">${d[0]}</span>`).join('');
+    return`<div class="rt-list-row"><div style="width:10px;height:10px;border-radius:50%;background:${rt.color};flex-shrink:0"></div><div style="flex:1"><div style="font-size:14px;font-weight:600;margin-bottom:5px">${esc(rt.title)}</div><div style="display:flex;gap:4px;flex-wrap:wrap">${pills}</div></div><button class="icon-btn" data-edit-rt="${rt.id}"><i class="ti ti-edit" style="font-size:15px"></i></button><button class="icon-btn" data-del-rt="${rt.id}"><i class="ti ti-trash" style="font-size:15px"></i></button></div>`;
+  }).join('');
+  const trt=rtForDate(tk),comp=(S.completions[tk]||[]).filter(id=>trt.some(r=>r.id===id));
+  const pct=trt.length>0?Math.round(comp.length/trt.length*100):0;
+  const prog=S.routines.length>0?`<div style="margin-top:16px;background:var(--bg2);border-radius:var(--r-lg);padding:14px 16px"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><span style="font-size:13px;font-weight:600;color:var(--text2)">Hoy — ${comp.length}/${trt.length}</span><span style="font-size:13px;font-weight:700;color:${pct===100?'var(--green)':'var(--text2)'}">${pct}%</span></div><div class="prog-bg"><div class="prog-fill" style="width:${pct}%"></div></div></div>`:'';
+  return`<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px"><h2 style="font-size:17px;font-weight:700">Mis rutinas</h2><button class="btn btn-sm" id="add-rt-btn"><i class="ti ti-plus"></i> Nueva</button></div>${rows}${prog}`;
+}
+
+/* ── FOOD ──────────────────────────────────────────────────────────────── */
+function buildFood(){
+  const tk=todayKey(),td=parseDate(tk);
+  const sw=new Date(td);sw.setDate(td.getDate()-td.getDay());
+  const wk=Array.from({length:7},(_,i)=>{const d=new Date(sw);d.setDate(sw.getDate()+i);return dk(d.getFullYear(),d.getMonth(),d.getDate());});
+  const wH=wk.map(ds=>{
+    const d=parseDate(ds),isT=ds===tk,dm=S.meals[ds]||{};
+    const cols=MEALS.map(m=>{const v=dm[m.key]||'';return`<div class="food-col" data-meal-day="${ds}" data-meal-key="${m.key}" data-meal-val="${encodeURIComponent(v)}"><div class="fc-h"><i class="ti ${m.icon}" style="font-size:13px;color:${m.color}"></i><span class="fc-lbl">${m.label}</span></div>${v?`<div style="display:flex;align-items:flex-start;gap:3px"><span class="fc-val">${esc(v)}</span><button class="icon-btn" style="padding:0;flex-shrink:0" data-del-meal="${ds}" data-del-meal-key="${m.key}"><i class="ti ti-x" style="font-size:11px"></i></button></div>`:`<span style="font-size:10px;color:var(--text3)">Añadir...</span>`}</div>`;}).join('');
+    return`<div class="food-card${isT?' today':''}"><div class="food-card-hd${isT?' today-h':''}">${isT?'Hoy · ':''}${DAYS[d.getDay()]} ${d.getDate()} <span style="font-size:11px;font-weight:400;color:var(--text2)">${MONTHS[d.getMonth()]}</span></div><div class="food-cols">${cols}</div></div>`;
+  }).join('');
+  const od=Object.keys(S.meals).filter(d=>!wk.includes(d)&&MEALS.some(m=>(S.meals[d]||{})[m.key])).sort();
+  const oH=od.length===0?'':
+    `<div class="section-lbl" style="margin-top:20px">Otros días</div>`+
+    od.map(ds=>{const d=parseDate(ds),dm=S.meals[ds]||{};const cols=MEALS.map(m=>{const v=dm[m.key]||'';return`<div class="food-col" data-meal-day="${ds}" data-meal-key="${m.key}" data-meal-val="${encodeURIComponent(v)}"><div class="fc-h"><i class="ti ${m.icon}" style="font-size:12px;color:${m.color}"></i><span class="fc-lbl">${m.label}</span></div>${v?`<span class="fc-val">${esc(v)}</span>`:`<span style="font-size:10px;color:var(--text3)">+</span>`}</div>`;}).join('');return`<div class="food-card${ds<tk?' past':''}"><div class="food-card-hd">${DAYS[d.getDay()]} ${d.getDate()} de ${MONTHS[d.getMonth()]} ${d.getFullYear()}</div><div class="food-cols">${cols}</div></div>`;}).join('');
+  return`<h2 style="font-size:17px;font-weight:700;margin-bottom:14px">Menú semanal</h2>${wH}${oH}`;
+}
+
+/* ══════════════════════════════════════════════
+   BLOOD BOWL
+══════════════════════════════════════════════ */
+function buildBB(){
+  const subtabs=`<div class="bb-subtabs">
+    <button class="bb-subtab${S.bbView==='list'?' active':''}" data-bbview="list">🏆 Torneos</button>
+    <button class="bb-subtab${S.bbView==='summary'?' active':''}" data-bbview="summary">📊 Resumen del año</button>
+  </div>`;
+  return`<div class="bb-header">
+    <div class="bb-header-title">🏈 Blood Bowl</div>
+    <div class="bb-header-sub">${S.bloodbowl.length} torneo${S.bloodbowl.length!==1?'s':''} registrado${S.bloodbowl.length!==1?'s':''}</div>
+  </div>
+  ${subtabs}
+  ${S.bbView==='list' ? buildBBList() : buildBBSummary()}`;
+}
+
+function posBadge(pos,total){
+  if(!pos) return '';
+  const cls=pos===1?'gold':pos===2?'silver':pos===3?'bronze':'other';
+  const icon=pos===1?'🥇':pos===2?'🥈':pos===3?'🥉':`#${pos}`;
+  return `<span class="bb-pos-badge ${cls}">${icon}${total?` de ${total}`:''}</span>`;
+}
+
+function buildBBList(){
+  const sorted=[...S.bloodbowl].sort((a,b)=>(b.date||'').localeCompare(a.date||''));
+  if(sorted.length===0) return`<div class="empty-s" style="padding:40px 16px">
+    <div style="font-size:48px;margin-bottom:12px">🏈</div>
+    <div style="font-size:16px;font-weight:600;color:var(--text);margin-bottom:6px">Todavía no hay torneos</div>
+    <div style="font-size:13px;color:var(--text2);margin-bottom:20px">Registra tu primer torneo y empieza a hacer seguimiento</div>
+    <button class="btn btn-red" id="add-bb-btn-empty"><i class="ti ti-plus"></i> Añadir torneo</button>
+  </div>`;
+  return`<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+    <span style="font-size:13px;color:var(--text2)">${sorted.length} torneo${sorted.length!==1?'s':''}</span>
+    <button class="btn btn-red btn-sm" id="add-bb-btn"><i class="ti ti-plus"></i> Añadir torneo</button>
+  </div>
+  ${sorted.map(t=>{
+    const w=t.wins||0,dr=t.draws||0,l=t.losses||0;
+    const tdf=t.tdf||0,tda=t.tda||0;
+    const d=t.date?parseDate(t.date):null;
+    return`<div class="bb-card">
+      <div class="bb-card-top" data-edit-bb="${t.id}">
+        <div class="bb-trophy"><i class="ti ti-trophy" style="font-size:20px;color:#d97706"></i></div>
+        <div style="flex:1">
+          <div class="bb-card-name">${esc(t.name)}</div>
+          <div class="bb-card-meta">
+            ${d?`<span><i class="ti ti-calendar" style="font-size:11px;vertical-align:-1px"></i> ${d.getDate()} ${MONTHS[d.getMonth()].slice(0,3)} ${d.getFullYear()}</span>`:''}
+            ${t.location?`<span><i class="ti ti-map-pin" style="font-size:11px;vertical-align:-1px"></i> ${esc(t.location)}</span>`:''}
+            ${t.team?`<span><i class="ti ti-shield" style="font-size:11px;vertical-align:-1px"></i> ${esc(t.team)}</span>`:''}
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px">
+          ${posBadge(t.position,t.totalTeams)}
+          <div style="display:flex;gap:2px">
+            <button class="icon-btn" data-edit-bb="${t.id}"><i class="ti ti-edit" style="font-size:14px"></i></button>
+            <button class="icon-btn" data-del-bb="${t.id}"><i class="ti ti-trash" style="font-size:14px"></i></button>
+          </div>
+        </div>
+      </div>
+      <div class="bb-card-body">
+        <div class="bb-stats-row">
+          <div class="bb-stat"><div class="bb-stat-val" style="color:var(--green)">${w}</div><div class="bb-stat-lbl">Victorias</div></div>
+          <div class="bb-stat"><div class="bb-stat-val" style="color:var(--blue)">${dr}</div><div class="bb-stat-lbl">Empates</div></div>
+          <div class="bb-stat"><div class="bb-stat-val" style="color:var(--pink)">${l}</div><div class="bb-stat-lbl">Derrotas</div></div>
+          <div class="bb-stat"><div class="bb-stat-val" style="color:var(--amber)">${w+dr+l}</div><div class="bb-stat-lbl">Partidas</div></div>
+        </div>
+        <div style="display:flex;align-items:center;justify-content:space-between;padding-top:6px">
+          <div class="bb-wdl"><span class="bb-w">${w}V</span><span class="bb-d">${dr}E</span><span class="bb-l">${l}D</span></div>
+          <div style="font-size:12px;color:var(--text2)">TD: <strong style="color:var(--green)">${tdf}</strong> – <strong style="color:var(--pink)">${tda}</strong></div>
+        </div>
+        ${t.notes?`<div style="font-size:12px;color:var(--text2);margin-top:8px;padding-top:8px;border-top:.5px solid var(--border);line-height:1.5">${esc(t.notes)}</div>`:''}
+      </div>
+    </div>`;
+  }).join('')}`;
+}
+
+function buildBBSummary(){
+  const yr=S.bbYear;
+  const inYear=S.bloodbowl.filter(t=>t.date&&t.date.startsWith(String(yr)));
+  const years=[...new Set(S.bloodbowl.filter(t=>t.date).map(t=>t.date.slice(0,4)))].sort((a,b)=>b-a);
+
+  const yearSel=`<div style="display:flex;align-items:center;gap:8px;margin-bottom:16px">
+    <button class="icon-btn" id="bb-yr-prev"><i class="ti ti-chevron-left"></i></button>
+    <div style="flex:1;text-align:center;font-size:16px;font-weight:700">${yr}</div>
+    <button class="icon-btn" id="bb-yr-next"><i class="ti ti-chevron-right"></i></button>
+  </div>`;
+
+  if(inYear.length===0) return yearSel+`<div class="empty-s">Sin torneos registrados en ${yr}</div>`;
+
+  const totalW=inYear.reduce((s,t)=>s+(t.wins||0),0);
+  const totalD=inYear.reduce((s,t)=>s+(t.draws||0),0);
+  const totalL=inYear.reduce((s,t)=>s+(t.losses||0),0);
+  const totalG=totalW+totalD+totalL;
+  const totalTDF=inYear.reduce((s,t)=>s+(t.tdf||0),0);
+  const totalTDA=inYear.reduce((s,t)=>s+(t.tda||0),0);
+  const winRate=totalG>0?Math.round(totalW/totalG*100):0;
+
+  // Best position
+  const withPos=inYear.filter(t=>t.position>0).sort((a,b)=>a.position-b.position);
+  const bestPos=withPos[0];
+
+  // Teams used
+  const teamCount={};
+  inYear.forEach(t=>{if(t.team){teamCount[t.team]=(teamCount[t.team]||0)+1;}});
+  const teamsSorted=Object.entries(teamCount).sort((a,b)=>b[1]-a[1]);
+
+  // Bar widths
+  const maxBar=Math.max(totalW,totalD,totalL,1);
+
+  const bigStats=`<div class="bb-big-stats">
+    <div class="bb-big-stat"><div class="bb-big-stat-val">${inYear.length}</div><div class="bb-big-stat-lbl">Torneos</div></div>
+    <div class="bb-big-stat"><div class="bb-big-stat-val">${totalG}</div><div class="bb-big-stat-lbl">Partidas totales</div></div>
+    <div class="bb-big-stat"><div class="bb-big-stat-val">${winRate}%</div><div class="bb-big-stat-lbl">% victorias</div></div>
+    <div class="bb-big-stat"><div class="bb-big-stat-val">${totalTDF}</div><div class="bb-big-stat-lbl">TDs anotados</div></div>
+    <div class="bb-big-stat" style="border-color:rgba(212,83,126,.2)"><div class="bb-big-stat-val" style="color:var(--pink)">${totalTDA}</div><div class="bb-big-stat-lbl">TDs encajados</div></div>
+    <div class="bb-big-stat" style="border-color:rgba(55,138,221,.2)"><div class="bb-big-stat-val" style="color:var(--blue)">${totalTDF-totalTDA>=0?'+':''}${totalTDF-totalTDA}</div><div class="bb-big-stat-lbl">Diferencia TDs</div></div>
+  </div>`;
+
+  const wdlBar=`<div class="bb-wdl-bar">
+    <div style="font-size:12px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:12px">Registro V / E / D</div>
+    <div class="bb-bar-row">
+      <span class="bb-bar-label" style="color:var(--green)">V</span>
+      <div class="bb-bar-bg"><div class="bb-bar-fill" style="width:${Math.round(totalW/maxBar*100)}%;background:var(--green)"></div></div>
+      <span class="bb-bar-count" style="color:var(--green)">${totalW}</span>
+    </div>
+    <div class="bb-bar-row">
+      <span class="bb-bar-label" style="color:var(--blue)">E</span>
+      <div class="bb-bar-bg"><div class="bb-bar-fill" style="width:${Math.round(totalD/maxBar*100)}%;background:var(--blue)"></div></div>
+      <span class="bb-bar-count" style="color:var(--blue)">${totalD}</span>
+    </div>
+    <div class="bb-bar-row">
+      <span class="bb-bar-label" style="color:var(--pink)">D</span>
+      <div class="bb-bar-bg"><div class="bb-bar-fill" style="width:${Math.round(totalL/maxBar*100)}%;background:var(--pink)"></div></div>
+      <span class="bb-bar-count" style="color:var(--pink)">${totalL}</span>
+    </div>
+  </div>`;
+
+  const bestPosHtml=bestPos?`<div class="bb-podium">
+    <h3>🏆 Mejor resultado del año</h3>
+    <div style="display:flex;align-items:center;gap:12px">
+      ${posBadge(bestPos.position,bestPos.totalTeams)}
+      <div>
+        <div style="font-size:15px;font-weight:700">${esc(bestPos.name)}</div>
+        ${bestPos.date?`<div style="font-size:12px;color:var(--text2);margin-top:2px">${parseDate(bestPos.date).getDate()} de ${MONTHS[parseDate(bestPos.date).getMonth()]}</div>`:''}
+      </div>
+    </div>
+  </div>`:'';
+
+  const teamsHtml=teamsSorted.length>0?`<div class="bb-team-list">
+    <div style="padding:10px 14px;border-bottom:.5px solid var(--border);font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.06em">Equipos usados</div>
+    ${teamsSorted.map(([team,count])=>`<div class="bb-team-row">
+      <i class="ti ti-shield-half" style="font-size:18px;color:var(--bb2);flex-shrink:0"></i>
+      <span style="flex:1;font-size:14px;font-weight:500">${esc(team)}</span>
+      <span style="font-size:13px;font-weight:700;color:var(--text2)">${count} torneo${count!==1?'s':''}</span>
+    </div>`).join('')}
+  </div>`:'';
+
+  // Tournament list for the year
+  const listHtml=`<div class="section-lbl">Torneos de ${yr}</div>
+  ${[...inYear].sort((a,b)=>(a.date||'').localeCompare(b.date||'')).map(t=>{
+    const w=t.wins||0,dr=t.draws||0,l=t.losses||0,d=t.date?parseDate(t.date):null;
+    return`<div class="bb-card">
+      <div class="bb-card-top">
+        <div class="bb-trophy"><i class="ti ti-trophy" style="font-size:18px;color:#d97706"></i></div>
+        <div style="flex:1">
+          <div class="bb-card-name" style="font-size:14px">${esc(t.name)}</div>
+          <div class="bb-card-meta">${d?`${d.getDate()} ${MONTHS[d.getMonth()].slice(0,3)}`:''}${t.team?` · ${esc(t.team)}`:''}</div>
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">
+          ${posBadge(t.position,t.totalTeams)}
+          <div class="bb-wdl"><span class="bb-w">${w}</span><span class="bb-d">${dr}</span><span class="bb-l">${l}</span></div>
+        </div>
+      </div>
+    </div>`;
+  }).join('')}`;
+
+  return yearSel+bigStats+wdlBar+bestPosHtml+teamsHtml+listHtml;
+}
+
+/* ── SETTINGS ──────────────────────────────────────────────────────────── */
+function buildSettings(){
+  const{url}=getCreds();
+  const ec=Object.values(S.events).reduce((s,v)=>s+v.length,0);
+  return`<h2 style="font-size:17px;font-weight:700;margin-bottom:16px">⚙️ Ajustes</h2>
+  <div class="connected-box">
+    <i class="ti ti-database-check" style="font-size:24px;color:var(--green);flex-shrink:0"></i>
+    <div style="flex:1"><div style="font-size:14px;font-weight:700;color:var(--green)">Supabase conectado</div><div style="font-size:12px;color:var(--text2);margin-top:2px;word-break:break-all">${url}</div></div>
+  </div>
+  <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px">
+    <button class="btn btn-primary" id="manual-sync-s"><i class="ti ti-refresh"></i> Sincronizar ahora</button>
+    <button class="btn" id="disconnect-btn" style="border-color:#c0392b;color:#c0392b"><i class="ti ti-unlink"></i> Desconectar</button>
+  </div>
+  <div class="s-card">
+    <h3>📊 Mis datos</h3>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:10px">
+      <div style="background:var(--bg2);border-radius:var(--r-md);padding:12px;text-align:center"><div style="font-size:24px;font-weight:800;color:var(--green)">${ec}</div><div style="font-size:11px;color:var(--text2)">Eventos</div></div>
+      <div style="background:var(--bg2);border-radius:var(--r-md);padding:12px;text-align:center"><div style="font-size:24px;font-weight:800;color:var(--blue)">${S.routines.length}</div><div style="font-size:11px;color:var(--text2)">Rutinas</div></div>
+      <div style="background:var(--bg2);border-radius:var(--r-md);padding:12px;text-align:center"><div style="font-size:24px;font-weight:800;color:var(--bb2)">${S.bloodbowl.length}</div><div style="font-size:11px;color:var(--text2)">Torneos BB</div></div>
+    </div>
+  </div>
+  <div class="s-card">
+    <h3>💾 Copia de seguridad</h3>
+    <p>Exporta todos los datos a JSON como backup extra.</p>
+    <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn btn-primary" id="export-btn"><i class="ti ti-download"></i> Exportar</button><button class="btn" id="import-btn"><i class="ti ti-upload"></i> Importar</button><input type="file" id="import-file" accept=".json" style="display:none"></div>
+  </div>
+  <div class="s-card" style="border-color:rgba(212,83,126,.3)">
+    <h3 style="color:#c0392b">🗑️ Borrar todos los datos</h3>
+    <p>Elimina todos los datos de Supabase y de este dispositivo.</p>
+    <button class="btn" id="clear-btn" style="border-color:#c0392b;color:#c0392b"><i class="ti ti-trash"></i> Borrar todo</button>
+  </div>`;
+}
+
+/* ── MODALS ────────────────────────────────────────────────────────────── */
+function buildModal(){
+  const f=S.form;
+  const sw=COLORS.map(c=>`<div class="swatch${f.color===c?' sel':''}" data-color="${c}" style="background:${c};color:${c}"></div>`).join('');
+
+  if(f.type==='event') return`<div class="modal-overlay" id="mo"><div class="modal">
+    <h3>${f.id?'Editar evento':'Nuevo evento'}</h3>
+    <div class="fg"><label>Título</label><input type="text" id="f-title" value="${esc(f.title||'')}" placeholder="Nombre del evento" autocomplete="off"></div>
+    <div class="fg"><label>Hora (opcional)</label><input type="time" id="f-time" value="${f.time||''}"></div>
+    <div class="fg"><label>Nota</label><textarea id="f-note" placeholder="Opcional...">${esc(f.note||'')}</textarea></div>
+    <div class="fg"><label>Color</label><div class="color-row">${sw}</div></div>
+    <div class="modal-actions"><button class="btn" id="mc">Cancelar</button><button class="btn btn-primary" id="ms">Guardar</button></div>
+  </div></div>`;
+
+  if(f.type==='routine'){
+    const dt=DAYS.map((d,i)=>`<button class="dtog${(f.days||[]).includes(i)?' on':''}" data-dow="${i}" style="${(f.days||[]).includes(i)?`border-color:${f.color};background:${f.color}22;color:var(--text)`:''}">${d}</button>`).join('');
+    return`<div class="modal-overlay" id="mo"><div class="modal">
+      <h3>${f.id?'Editar rutina':'Nueva rutina'}</h3>
+      <div class="fg"><label>Nombre</label><input type="text" id="f-title" value="${esc(f.title||'')}" placeholder="Ej: Meditar, Correr..." autocomplete="off"></div>
+      <div class="fg"><label>Días activos</label><div class="day-row">${dt}</div></div>
+      <div class="fg"><label>Color</label><div class="color-row">${sw}</div></div>
+      <div class="modal-actions"><button class="btn" id="mc">Cancelar</button><button class="btn btn-primary" id="ms">Guardar</button></div>
+    </div></div>`;
+  }
+
+  if(f.type==='meal'){
+    const m=MEALS.find(x=>x.key===f.mealKey);
+    return`<div class="modal-overlay" id="mo"><div class="modal">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px"><i class="ti ${m.icon}" style="font-size:20px;color:${m.color}"></i><h3 style="margin:0">${m.label}</h3></div>
+      <p style="font-size:12px;color:var(--text2);margin-bottom:12px">${fmtLabel(f.date)}</p>
+      <div class="fg"><textarea id="f-meal-text" rows="4" placeholder="¿Qué hay de ${m.label.toLowerCase()}?">${esc(decodeURIComponent(f.text||''))}</textarea></div>
+      <div class="modal-actions"><button class="btn" id="mc">Cancelar</button><button class="btn btn-primary" id="ms">Guardar</button></div>
+    </div></div>`;
+  }
+
+  if(f.type==='bb'){
+    return`<div class="modal-overlay" id="mo"><div class="modal">
+      <h3 style="display:flex;align-items:center;gap:8px"><i class="ti ti-trophy" style="color:#d97706"></i>${f.id?'Editar torneo':'Nuevo torneo'}</h3>
+      <div class="fg"><label>Nombre del torneo *</label><input type="text" id="f-bb-name" value="${esc(f.name||'')}" placeholder="Ej: Copa de Otoño" autocomplete="off"></div>
+      <div class="form-grid">
+        <div class="fg"><label>Fecha</label><input type="text" id="f-bb-date" value="${f.date||''}" placeholder="YYYY-MM-DD"></div>
+        <div class="fg"><label>Lugar</label><input type="text" id="f-bb-loc" value="${esc(f.location||'')}" placeholder="Ciudad o club"></div>
+      </div>
+      <div class="fg"><label>Equipo / Raza</label><input type="text" id="f-bb-team" value="${esc(f.team||'')}" placeholder="Ej: Orcos, Elfos, Skaven..."></div>
+      <div style="margin-bottom:12px">
+        <label style="display:block;font-size:12px;font-weight:600;color:var(--text2);margin-bottom:8px">Resultados de partidas</label>
+        <div class="form-grid" style="grid-template-columns:repeat(3,1fr)">
+          <div class="fg" style="margin:0"><label style="font-size:11px;color:var(--green)">Victorias (V)</label><input type="number" id="f-bb-w" value="${f.wins||0}" min="0"></div>
+          <div class="fg" style="margin:0"><label style="font-size:11px;color:var(--blue)">Empates (E)</label><input type="number" id="f-bb-d" value="${f.draws||0}" min="0"></div>
+          <div class="fg" style="margin:0"><label style="font-size:11px;color:var(--pink)">Derrotas (D)</label><input type="number" id="f-bb-l" value="${f.losses||0}" min="0"></div>
+        </div>
+      </div>
+      <div style="margin-bottom:12px">
+        <label style="display:block;font-size:12px;font-weight:600;color:var(--text2);margin-bottom:8px">Touchdowns</label>
+        <div class="form-grid">
+          <div class="fg" style="margin:0"><label style="font-size:11px;color:var(--green)">A favor (TDF)</label><input type="number" id="f-bb-tdf" value="${f.tdf||0}" min="0"></div>
+          <div class="fg" style="margin:0"><label style="font-size:11px;color:var(--pink)">En contra (TDA)</label><input type="number" id="f-bb-tda" value="${f.tda||0}" min="0"></div>
+        </div>
+      </div>
+      <div style="margin-bottom:12px">
+        <label style="display:block;font-size:12px;font-weight:600;color:var(--text2);margin-bottom:8px">Clasificación final</label>
+        <div class="form-grid">
+          <div class="fg" style="margin:0"><label style="font-size:11px">Posición</label><input type="number" id="f-bb-pos" value="${f.position||''}" min="1" placeholder="1, 2, 3..."></div>
+          <div class="fg" style="margin:0"><label style="font-size:11px">Total equipos</label><input type="number" id="f-bb-tot" value="${f.totalTeams||''}" min="1" placeholder="Nº participantes"></div>
+        </div>
+      </div>
+      <div class="fg"><label>Notas</label><textarea id="f-bb-notes" rows="3" placeholder="Rivales, anécdotas, lista usada...">${esc(f.notes||'')}</textarea></div>
+      <div class="modal-actions"><button class="btn" id="mc">Cancelar</button><button class="btn btn-red" id="ms">Guardar torneo</button></div>
+    </div></div>`;
+  }
+  return'';
+}
+
+/* ── BACKUP ────────────────────────────────────────────────────────────── */
+function exportData(){
+  const b=new Blob([JSON.stringify({version:5,exportDate:new Date().toISOString(),...payload()},null,2)],{type:'application/json'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=`planificador-${new Date().toISOString().slice(0,10)}.json`;a.click();toast('📥 Backup descargado');
+}
+function importData(file){
+  const r=new FileReader();
+  r.onload=async e=>{
+    try{
+      const d=JSON.parse(e.target.result);
+      S.events=d.events||{}; S.routines=d.routines||[]; S.completions=d.completions||{}; S.meals=d.meals||{}; S.bloodbowl=d.bloodbowl||[];
+      await dbSave(payload()); render(); toast('✅ Datos importados y subidos');
+    }catch{toast('❌ Archivo no válido');}
+  };
+  r.readAsText(file);
+}
+
+/* ── ATTACH EVENTS ─────────────────────────────────────────────────────── */
+function attachEvents(){
+  bindAll('[data-tab]','click',e=>setState({view:e.currentTarget.dataset.tab,sel:null,modal:null}));
+  bind('#prev-mo','click',()=>S.mo===0?setState({mo:11,yr:S.yr-1}):setState({mo:S.mo-1}));
+  bind('#next-mo','click',()=>S.mo===11?setState({mo:0,yr:S.yr+1}):setState({mo:S.mo+1}));
+  bindAll('[data-day]','click',e=>setState({sel:e.currentTarget.dataset.day}));
+  bind('#detail-back','click',()=>setState({sel:null}));
+  bindAll('[data-goto]','click',e=>{const k=e.currentTarget.dataset.goto,d=parseDate(k);setState({sel:k,yr:d.getFullYear(),mo:d.getMonth()});});
+  bind('#add-ev-btn','click',()=>setState({modal:'event',form:{type:'event',date:S.sel,id:null,title:'',time:'',note:'',color:COLORS[0]}}));
+  bindAll('[data-edit-ev]','click',e=>{
+    const id=e.currentTarget.dataset.editEv, ds=e.currentTarget.dataset.evDate||S.sel;
+    const ev=(S.events[ds]||[]).find(x=>x.id===id);
+    if(ev)setState({modal:'event',form:{type:'event',date:ds,id:ev.id,title:ev.title,time:ev.time||'',note:ev.note||'',color:ev.color}});
+  });
+  bindAll('[data-del-ev]','click',e=>{const id=e.currentTarget.dataset.delEv,ds=e.currentTarget.dataset.evDate||S.sel;saveEv({...S.events,[ds]:(S.events[ds]||[]).filter(ev=>ev.id!==id)});render();});
+  bindAll('[data-comp-rt]','click',e=>{const rid=e.currentTarget.dataset.compRt,dc=S.completions[S.sel]||[];saveCo({...S.completions,[S.sel]:dc.includes(rid)?dc.filter(x=>x!==rid):[...dc,rid]});render();});
+  bindAll('[data-meal-day]','click',e=>{if(e.target.closest('[data-del-meal]'))return;setState({modal:'meal',form:{type:'meal',date:e.currentTarget.dataset.mealDay,mealKey:e.currentTarget.dataset.mealKey,text:e.currentTarget.dataset.mealVal||''}});});
+  bindAll('[data-del-meal]','click',e=>{e.stopPropagation();const ds=e.currentTarget.dataset.delMeal,mk=e.currentTarget.dataset.delMealKey;const d={...(S.meals[ds]||{})};delete d[mk];saveMe({...S.meals,[ds]:d});render();});
+  bind('#add-rt-btn','click',()=>setState({modal:'routine',form:{type:'routine',id:null,title:'',color:COLORS[0],days:[0,1,2,3,4,5,6]}}));
+  bindAll('[data-edit-rt]','click',e=>{const rt=S.routines.find(r=>r.id===e.currentTarget.dataset.editRt);if(rt)setState({modal:'routine',form:{type:'routine',id:rt.id,title:rt.title,color:rt.color,days:[...rt.days]}});});
+  bindAll('[data-del-rt]','click',e=>{saveRt(S.routines.filter(r=>r.id!==e.currentTarget.dataset.delRt));render();});
+
+  // Blood Bowl
+  bindAll('[data-bbview]','click',e=>setState({bbView:e.currentTarget.dataset.bbview}));
+  const openBBForm=(t=null)=>setState({modal:'bb',form:{type:'bb',id:t?.id||null,name:t?.name||'',date:t?.date||'',location:t?.location||'',team:t?.team||'',wins:t?.wins||0,draws:t?.draws||0,losses:t?.losses||0,tdf:t?.tdf||0,tda:t?.tda||0,position:t?.position||'',totalTeams:t?.totalTeams||'',notes:t?.notes||''}});
+  bind('#add-bb-btn','click',()=>openBBForm());
+  bind('#add-bb-btn-empty','click',()=>openBBForm());
+  bindAll('[data-edit-bb]','click',e=>{e.stopPropagation();const t=S.bloodbowl.find(x=>x.id===e.currentTarget.dataset.editBb);if(t)openBBForm(t);});
+  bindAll('[data-del-bb]','click',e=>{e.stopPropagation();if(confirm('¿Eliminar este torneo?')){saveBB(S.bloodbowl.filter(x=>x.id!==e.currentTarget.dataset.delBb));render();}});
+  bind('#bb-yr-prev','click',()=>setState({bbYear:S.bbYear-1}));
+  bind('#bb-yr-next','click',()=>setState({bbYear:S.bbYear+1}));
+
+  // Sync
+  const doSync=async()=>{toast('☁️ Sincronizando...');setSyncStatus('loading');try{const row=await dbLoad();S.events=row.events||{};S.routines=row.routines||[];S.completions=row.completions||{};S.meals=row.meals||{};S.bloodbowl=row.bloodbowl||[];setSyncStatus('ok');render();toast('✅ Datos actualizados');}catch(e){setSyncStatus('error');toast('⚠️ Error al sincronizar');}};
+  bind('#manual-sync','click',doSync);
+  bind('#manual-sync-s','click',doSync);
+  bind('#disconnect-btn','click',()=>{if(confirm('¿Desconectar Supabase?')){localStorage.removeItem(LS_URL);localStorage.removeItem(LS_KEY);supabase=null;setState({appState:'setup'});}});
+  bind('#export-btn','click',exportData);
+  bind('#import-btn','click',()=>qs('#import-file')?.click());
+  bind('#import-file','change',e=>{const f=e.target.files[0];if(f)importData(f);});
+  bind('#clear-btn','click',async()=>{if(!confirm('¿Borrar TODOS los datos? No se puede deshacer.'))return;S.events={};S.routines=[];S.completions={};S.meals={};S.bloodbowl=[];await dbSave(payload());render();toast('🗑️ Datos eliminados');});
+
+  // Modal commons
+  bind('#mo','click',e=>{if(e.target.id==='mo')setState({modal:null});});
+  bind('#mc','click',()=>setState({modal:null}));
+  bindAll('.swatch','click',e=>setState({form:{...S.form,color:e.currentTarget.dataset.color}}));
+  bindAll('.dtog','click',e=>{const i=parseInt(e.currentTarget.dataset.dow),days=[...(S.form.days||[])];setState({form:{...S.form,days:days.includes(i)?days.filter(x=>x!==i):[...days,i]}});});
+
+  bind('#ms','click',()=>{
+    const f=S.form;
+    if(f.type==='event'){
+      const title=(qs('#f-title')?.value||'').trim();if(!title)return;
+      const ev={id:f.id||Date.now().toString(),title,time:qs('#f-time')?.value||'',note:qs('#f-note')?.value||'',color:f.color};
+      const de=S.events[f.date]||[];
+      saveEv({...S.events,[f.date]:f.id?de.map(e=>e.id===f.id?ev:e):[...de,ev]});setState({modal:null});
+    }else if(f.type==='routine'){
+      const title=(qs('#f-title')?.value||'').trim();if(!title)return;
+      const rt={id:f.id||Date.now().toString(),title,color:f.color,days:f.days||[]};
+      saveRt(f.id?S.routines.map(r=>r.id===f.id?rt:r):[...S.routines,rt]);setState({modal:null});
+    }else if(f.type==='meal'){
+      saveMe({...S.meals,[f.date]:{...(S.meals[f.date]||{}),[f.mealKey]:qs('#f-meal-text')?.value||''}});setState({modal:null});
+    }else if(f.type==='bb'){
+      const name=(qs('#f-bb-name')?.value||'').trim();if(!name){toast('El nombre es obligatorio');return;}
+      const t={
+        id:f.id||Date.now().toString(),
+        name, date:qs('#f-bb-date')?.value||'',
+        location:qs('#f-bb-loc')?.value||'',
+        team:qs('#f-bb-team')?.value||'',
+        wins:parseInt(qs('#f-bb-w')?.value||0)||0,
+        draws:parseInt(qs('#f-bb-d')?.value||0)||0,
+        losses:parseInt(qs('#f-bb-l')?.value||0)||0,
+        tdf:parseInt(qs('#f-bb-tdf')?.value||0)||0,
+        tda:parseInt(qs('#f-bb-tda')?.value||0)||0,
+        position:parseInt(qs('#f-bb-pos')?.value||0)||0,
+        totalTeams:parseInt(qs('#f-bb-tot')?.value||0)||0,
+        notes:qs('#f-bb-notes')?.value||'',
+      };
+      saveBB(f.id?S.bloodbowl.map(x=>x.id===f.id?t:x):[...S.bloodbowl,t]);
+      setState({modal:null});
+    }
+  });
+  document.addEventListener('keydown',e=>{if(e.key==='Escape'&&S.modal)setState({modal:null});},{once:true});
+}
+
+boot();
+</script>
+</body>
+</html>
